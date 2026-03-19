@@ -9,9 +9,9 @@
 #include <spirv_glsl.hpp>
 #include <spirv_hlsl.hpp>
 
-void SpirvHelper::Init() { glslang::InitializeProcess(); }
-void SpirvHelper::Exit() { glslang::FinalizeProcess(); }
-void SpirvHelper::SetupResources(TBuiltInResource& resources) {
+SPV_API void SpirvHelper::Init() { glslang::InitializeProcess(); }
+SPV_API void SpirvHelper::Exit() { glslang::FinalizeProcess(); }
+SPV_API void SpirvHelper::SetupResources(TBuiltInResource& resources) {
   resources.maxLights = 32;
   resources.maxClipPlanes = 6;
   resources.maxTextureUnits = 32;
@@ -115,7 +115,8 @@ void SpirvHelper::SetupResources(TBuiltInResource& resources) {
   resources.limits.generalConstantMatrixVectorIndexing = 1;
 }
 
-std::vector<unsigned int> SpirvHelper::GLSL2SPV(Stage stage, const char* code) {
+SPV_API std::vector<unsigned int> SpirvHelper::GLSL2SPV(Stage stage,
+                                                        const char* code) {
   std::vector<unsigned int> spv;
   EShLanguage estage = static_cast<EShLanguage>(stage);
   glslang::TShader shader(estage);
@@ -170,8 +171,8 @@ std::string SpirvHelper::SPV2GLSL(const std::vector<unsigned int>& spirv,
   return ret;
 }
 
-std::string SpirvHelper::SPV2HLSL(const std::vector<unsigned int>& spirv,
-                                  int version) {
+SPV_API std::string SpirvHelper::SPV2HLSL(
+    const std::vector<unsigned int>& spirv, int version) {
   std::string ret;
   spirv_cross::CompilerHLSL hlsl(spirv);
   spirv_cross::CompilerHLSL::Options scoptions;

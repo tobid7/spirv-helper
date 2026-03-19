@@ -10,10 +10,12 @@ if(SPV_BUILD_SHARED)
     add_library(spirv-helper SHARED
         source/spirv-helper.cpp
     )
+    target_compile_definitions(spirv-helper PRIVATE SPV_BUILD_SHARED)
 else()
     add_library(spirv-helper STATIC
         source/spirv-helper.cpp
     )
+    target_compile_definitions(spirv-helper PUBLIC SPV_BUILD_STATIC)
 endif()
 
 target_link_libraries(spirv-helper PUBLIC
