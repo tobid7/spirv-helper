@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
+include(GNUInstallDirs)
+
 project(spirv-helper VERSION 0.1.0 LANGUAGES CXX)
 
 option(SPV_BUILD_SHARED "Build Shared Library" OFF)
@@ -39,4 +41,16 @@ target_include_directories(spirv-helper
     PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
+)
+
+install(
+    TARGETS spirv-helper
+    EXPORT spirv-helperTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+install(
+    DIRECTORY include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
