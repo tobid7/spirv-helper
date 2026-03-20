@@ -23,7 +23,6 @@ endif()
 target_link_libraries(spirv-helper PUBLIC
     glslang
     glslang-default-resource-limits
-    OSDependent
     SPIRV
 
     spirv-cross-core
