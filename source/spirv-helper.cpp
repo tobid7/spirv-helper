@@ -1,7 +1,10 @@
-
+#ifndef SPV_EXCLUDE_GLSLANG
 #include <SPIRV/GlslangToSpv.h>
 #include <glslang/Public/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
+#else
+struct TBuiltInResource {};
+#endif
 
 #include <iostream>
 #include <spirv-helper.hpp>
@@ -9,9 +12,15 @@
 #include <spirv_glsl.hpp>
 #include <spirv_hlsl.hpp>
 
+#ifndef SPV_EXCLUDE_GLSLANG
 SPV_API void SpirvHelper::Init() { glslang::InitializeProcess(); }
 SPV_API void SpirvHelper::Exit() { glslang::FinalizeProcess(); }
+#else
+SPV_API void SpirvHelper::Init() {}
+SPV_API void SpirvHelper::Exit() {}
+#endif
 SPV_API void SpirvHelper::SetupResources(TBuiltInResource& resources) {
+#ifndef SPV_EXCLUDE_GLSLANG
   resources.maxLights = 32;
   resources.maxClipPlanes = 6;
   resources.maxTextureUnits = 32;
@@ -113,11 +122,13 @@ SPV_API void SpirvHelper::SetupResources(TBuiltInResource& resources) {
   resources.limits.generalSamplerIndexing = 1;
   resources.limits.generalVariableIndexing = 1;
   resources.limits.generalConstantMatrixVectorIndexing = 1;
+#endif
 }
 
 SPV_API std::vector<unsigned int> SpirvHelper::GLSL2SPV(Stage stage,
                                                         const char* code) {
   std::vector<unsigned int> spv;
+#ifndef SPV_EXCLUDE_GLSLANG
   EShLanguage estage = static_cast<EShLanguage>(stage);
   glslang::TShader shader(estage);
   glslang::TProgram program;
@@ -147,6 +158,7 @@ SPV_API std::vector<unsigned int> SpirvHelper::GLSL2SPV(Stage stage,
   }
 
   glslang::GlslangToSpv(*program.getIntermediate(estage), spv);
+#endif
   return spv;
 }
 

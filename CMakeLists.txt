@@ -5,6 +5,7 @@ include(GNUInstallDirs)
 project(spirv-helper VERSION 0.1.0 LANGUAGES CXX)
 
 option(SPV_BUILD_SHARED "Build Shared Library" OFF)
+option(SPV_EXCLUDE_GLSLANG "Exclude glslang from build" OFF)
 
 add_subdirectory(vendor)
 
@@ -21,10 +22,6 @@ else()
 endif()
 
 target_link_libraries(spirv-helper PUBLIC
-    glslang
-    glslang-default-resource-limits
-    SPIRV
-
     spirv-cross-core
     spirv-cross-cpp
     spirv-cross-glsl
@@ -32,6 +29,18 @@ target_link_libraries(spirv-helper PUBLIC
     spirv-cross-msl
     spirv-cross-reflect
     spirv-cross-util
+)
+
+if(NOT SPV_EXCLUDE_GLSLANG)
+    target_link_libraries(spirv-helper PUBLIC
+        glslang
+        glslang-default-resource-limits
+        SPIRV
+    )
+endif()
+
+target_compile_definitions(spirv-helper PRIVATE
+    $<$<BOOL:${SPV_EXCLUDE_GLSLANG}>:SPV_EXCLUDE_GLSLANG>
 )
 
 add_library(spirv-helper::spirv-helper ALIAS spirv-helper)
