@@ -48,7 +48,9 @@ SOFTWARE.
 #define SPV_API
 #endif
 
+#include <cstddef>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 struct TBuiltInResource;
@@ -56,7 +58,7 @@ namespace SpirvHelper {
 enum class Format {
   GLSL,
   HLSL,
-  MSL,  // Not supported yet
+  MSL,
   SPIRV,
 };
 
@@ -74,4 +76,32 @@ SPV_API std::string SPV2GLSL(const std::vector<unsigned int>& spirv,
                              int version, bool es = false);
 SPV_API std::string SPV2HLSL(const std::vector<unsigned int>& spirv,
                              int version);
+
+struct MSLOptions {
+  int VersionMajor = 2;
+  int VersionMinor = 1;
+  bool IOS = false;  // false -> macOS
+  // OpenGL based
+  bool FixupClipspace = true;
+  int UniformBufferSlot = -1;
+  int PushConstantSlot = -1;
+  int TextureSlot = -1;
+  int SamplerSlot = -1;
+};
+
+struct MSLBlockInfo {
+  std::string Name;
+  size_t Size = 0;
+  std::unordered_map<std::string, size_t> Offsets;
+};
+
+struct MSLResult {
+  std::string Code;
+  std::string EntryPoint;
+  std::vector<MSLBlockInfo> UniformBuffers;
+  std::vector<MSLBlockInfo> PushConstants;
+};
+
+SPV_API MSLResult SPV2MSL(const std::vector<unsigned int>& spirv,
+                          const MSLOptions& options = {});
 };  // namespace SpirvHelper

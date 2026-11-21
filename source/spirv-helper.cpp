@@ -11,6 +11,7 @@ struct TBuiltInResource {};
 #include <spirv.hpp>
 #include <spirv_glsl.hpp>
 #include <spirv_hlsl.hpp>
+#include <spirv_msl.hpp>
 
 #ifndef SPV_EXCLUDE_GLSLANG
 SPV_API void SpirvHelper::Init() { glslang::InitializeProcess(); }
@@ -193,5 +194,85 @@ SPV_API std::string SpirvHelper::SPV2HLSL(
   scoptions.force_storage_buffer_as_uav = false;
   hlsl.set_hlsl_options(scoptions);
   ret = hlsl.compile();
+  return ret;
+}
+
+static SpirvHelper::MSLBlockInfo ReflectMSLBlock(
+    spirv_cross::Compiler& comp, const spirv_cross::Resource& res) {
+  SpirvHelper::MSLBlockInfo info;
+  info.Name = res.name;
+  const auto& type = comp.get_type(res.base_type_id);
+  info.Size = comp.get_declared_struct_size(type);
+  for (unsigned int i = 0; i < type.member_types.size(); i++) {
+    info.Offsets[comp.get_member_name(res.base_type_id, i)] =
+        comp.type_struct_member_offset(type, i);
+  }
+  return info;
+}
+
+SPV_API SpirvHelper::MSLResult SpirvHelper::SPV2MSL(
+    const std::vector<unsigned int>& spirv, const MSLOptions& options) {
+  MSLResult ret;
+  spirv_cross::CompilerMSL msl(spirv);
+
+  auto entries = msl.get_entry_points_and_stages();
+  if (entries.empty()) {
+    throw spirv_cross::CompilerError("SPV2MSL: Module has no entry point");
+  }
+  const auto entry = entries[0];
+  msl.set_entry_point(entry.name, entry.execution_model);
+
+  auto mopts = msl.get_msl_options();
+  mopts.platform = options.IOS ? spirv_cross::CompilerMSL::Options::iOS
+                               : spirv_cross::CompilerMSL::Options::macOS;
+  mopts.set_msl_version(options.VersionMajor, options.VersionMinor);
+  msl.set_msl_options(mopts);
+
+  auto copts = msl.get_common_options();
+  copts.vertex.fixup_clipspace = options.FixupClipspace;
+  msl.set_common_options(copts);
+
+  auto bind = [&](unsigned int set, unsigned int binding, int buf, int tex,
+                  int smp) {
+    spirv_cross::MSLResourceBinding b;
+    b.stage = entry.execution_model;
+    b.desc_set = set;
+    b.binding = binding;
+    b.msl_buffer = buf < 0 ? 0 : static_cast<unsigned int>(buf);
+    b.msl_texture = tex < 0 ? 0 : static_cast<unsigned int>(tex);
+    b.msl_sampler = smp < 0 ? 0 : static_cast<unsigned int>(smp);
+    msl.add_msl_resource_binding(b);
+  };
+  auto set_of = [&](const spirv_cross::Resource& r) {
+    return msl.get_decoration(r.id, spv::DecorationDescriptorSet);
+  };
+  auto binding_of = [&](const spirv_cross::Resource& r) {
+    return msl.get_decoration(r.id, spv::DecorationBinding);
+  };
+
+  auto res = msl.get_shader_resources();
+  for (auto& r : res.uniform_buffers) {
+    if (options.UniformBufferSlot >= 0) {
+      bind(set_of(r), binding_of(r), options.UniformBufferSlot, -1, -1);
+    }
+    ret.UniformBuffers.push_back(ReflectMSLBlock(msl, r));
+  }
+  for (auto& r : res.push_constant_buffers) {
+    if (options.PushConstantSlot >= 0) {
+      bind(spirv_cross::kPushConstDescSet, spirv_cross::kPushConstBinding,
+           options.PushConstantSlot, -1, -1);
+    }
+    ret.PushConstants.push_back(ReflectMSLBlock(msl, r));
+  }
+  if (options.TextureSlot >= 0 || options.SamplerSlot >= 0) {
+    for (auto& r : res.sampled_images) {
+      bind(set_of(r), binding_of(r), -1, options.TextureSlot,
+           options.SamplerSlot);
+    }
+  }
+
+  ret.Code = msl.compile();
+  ret.EntryPoint =
+      msl.get_cleansed_entry_point_name(entry.name, entry.execution_model);
   return ret;
 }
